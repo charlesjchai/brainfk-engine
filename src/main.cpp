@@ -2,42 +2,48 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <fstream>
 #include "utils.hpp"
 
 using std::cin;
 using std::cout;
+using namespace BrainFK;
 
 int main(int argc, char *argv[]) {
     constexpr std::string_view VERSION = "0.1.0";
     constexpr std::string_view HELP = R"(Usage: brainfkrun [--version] [--optimize] [--help]
-<command> file
+<mode> file
 
-COMMANDS:
+MODES:
 
     interpret   Interpret a .bf file
     transpile   Transpile the .bf file into a .c file
     compile     Transpile a .bf file and compile it
 
 FLAGS:
+
     [--version]
         Shows the current version
 
-    [--optimize]
-        Shrinks multiple instructions into a single one (+++++ becomes += 5)
-
     [--help]
         Shows this screen
+
+    [--optimize]
+        Shrinks multiple instructions into a single one (>>>>> becomes cell_index += 5)
 )";
+    // TODO: Change `const` to `constexpr` in C++26
+    const std::unordered_set<char> BRAINFK_SYMBOLS = {'+', '-', '>', '<', '.', ',', '[', ']'};
 
     if (argc == 1) {
-        cout << HELP;
+        std::cerr << HELP;
         return 1;
     }
     std::vector<std::string> args(argv + 1, argv + argc);
     std::unordered_set<Flag> flags;
-    Target target;
+    Mode mode = static_cast<Mode>(-1); // mode is invalid until declared
     std::string filename;
-    for (int i = 0; i < args.size() - 1; i++) {
+
+    for (int i = 0; i < args.size(); i++) {
         const auto &arg = args[i];
 
         // Add flags to set
@@ -50,33 +56,72 @@ FLAGS:
             } else if (arg == "--optimize") {
                 flags.insert(Flag::Optimize);
             } else {
-                cout << "ERROR: `" << arg << "` is not a valid flag.\n";
+                std::cerr << "ERROR: `" << arg << "` is not a valid flag.\n";
                 return 1;
             }
             continue;
         }
+        
+        if (i == args.size() - 1) {
+            filename = args.back();
+            break;
+        }
+
+        if (args.back().starts_with("--")) {
+            std::cerr << "ERROR: the file has to be the last element.\n";
+            return 1;
+        }
 
         // Set target flag
         if (arg == "interpret") {
-            target = Target::Interpret;
+            mode = Mode::Interpret;
         }
         else if (arg == "transpile") {
-            target = Target::Transpile;
+            mode = Mode::Transpile;
         }
         else if (arg == "compile") {
-            target = Target::Compile;
+            mode = Mode::Compile;
         }
         else {
-            cout << "ERROR: `" << arg << "` is not a valid command.\n";
+            //TODO: Read from stdin
+            std::cerr << "ERROR: `" << arg << "` is not a valid mode.\n";
             return 1;
         }
     }
-    // Make sure the last element isn't a flag
-    if (args.back().starts_with("--")) {
-        cout << "ERROR: flags go before the file.\n";
+
+    if (mode == static_cast<Mode>(-1)) {
+        std::cerr << "ERROR: Mode not set!\n";
         return 1;
     }
-    filename = args.back();
 
+    bool optimized = flags.contains(Flag::Optimize);
+    std::ifstream program_file(filename);
+    std::string line;
+
+    std::string program;
+
+    if (!program_file.is_open()) {
+        std::cerr << "Error opening " << filename << " for reading\n";
+        return 1;
+    }
+    char ch;
+    // Get rid of everything that isn't an instruction
+    while (program_file.get(ch)) {
+        if (BRAINFK_SYMBOLS.contains(ch)) {
+            program.push_back(ch);
+        }
+    }
+
+    switch (mode) {
+        case Mode::Interpret:
+            interpret(program, flags);
+            break;
+        case Mode::Transpile:
+            // TBA
+            break;
+        case Mode::Compile:
+            // TBA
+            break;
+    }
     return 0;
 }
