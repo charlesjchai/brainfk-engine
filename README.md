@@ -14,10 +14,9 @@ brainfk-engine is a command that executes Brainf**k scripts. It has 3 modes, whi
 ```
 git clone https://github.com/charlesjchai/brainfk-engine
 cd brainfk-engine
-mkdir build && cd build
-cmake ..
-cmake --build .
-./brainfkrun
+cmake -B build -S .
+cmake --build build
+./build/brainfkrun
 ```
 ### Executing brainfk-engine
 Usage: `brainfkrun <flags> <mode> file`

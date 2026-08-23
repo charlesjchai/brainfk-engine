@@ -11,7 +11,7 @@ void BrainFK::interpret(std::string_view program, const std::unordered_set<Flag>
 
     const bool& optimized = options.contains(Flag::Optimize);
 
-    std::vector<uint8_t> tape(1000);
+    std::vector<uint8_t> tape(1024);
     size_t byte_index = 0;
     std::string user_input;
 
@@ -35,8 +35,7 @@ void BrainFK::interpret(std::string_view program, const std::unordered_set<Flag>
             case '>':
                 byte_index++;
                 if (byte_index == tape.size()) {
-                    // Push back the correct amount of zeros, to prevent UB.
-                    tape.insert(tape.end(), byte_index - tape.size() + 1, 0);
+                    tape.resize(tape.size() * 2);
                 }
                 break;
             case '<':
@@ -67,6 +66,7 @@ void BrainFK::interpret(std::string_view program, const std::unordered_set<Flag>
                 if (program.substr(ii, 3) == "[-]" && optimized) {
                     tape[byte_index] = 0;
                     ii += 2;
+                    break;
                 }
                 if (!tape[byte_index]) { // Stop the loop if the current byte is 0
                     ii = loop_map[ii];

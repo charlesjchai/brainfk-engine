@@ -3,6 +3,7 @@
 #include <vector>
 #include <unordered_set>
 #include <fstream>
+#include <chrono>
 #include "utils.hpp"
 
 using std::cin;
@@ -111,7 +112,7 @@ FLAGS:
             program.push_back(ch);
         }
     }
-
+    uint64_t before = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     switch (mode) {
         case Mode::Interpret:
             interpret(program, flags);
@@ -123,5 +124,7 @@ FLAGS:
             // TBA
             break;
     }
+    uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::cout << "Time elapsed: " << now - before << " µs\n";
     return 0;
 }
