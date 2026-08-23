@@ -1,18 +1,24 @@
 #include <iostream>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
+#include <cstdint>
 #include <stack>
 #include "utils.hpp"
 using namespace BrainFK;
 
-void BrainFK::interpret(std::string_view program, bool optimized) {
-    std::vector<uint8_t> tape(30000);
+void BrainFK::interpret(std::string_view program, const std::unordered_set<Flag>& options) {
+
+    const bool& optimized = options.contains(Flag::Optimize);
+
+    std::vector<uint8_t> tape(1000);
     size_t byte_index = 0;
     std::string user_input;
 
     // Setup map for looping
     std::unordered_map<size_t, size_t> loop_map;
     std::stack<size_t> loop_stack;
-    for (size_t ii; ii < program.length(); ii++) {
+    for (size_t ii = 0; ii < program.length(); ii++) {
         uint8_t instruction = program[ii];
         if (instruction == '[') {
             loop_stack.push(ii);
@@ -34,8 +40,10 @@ void BrainFK::interpret(std::string_view program, bool optimized) {
                 }
                 break;
             case '<':
+                if (byte_index == 0) {
+                    throw std::out_of_range("Index below 0");
+                }
                 byte_index--;
-                if (byte_index < 0) byte_index = 0;
                 break;
             case '+':
                 tape[byte_index]++;
@@ -48,14 +56,18 @@ void BrainFK::interpret(std::string_view program, bool optimized) {
                 break;
             case ',':
                 if (user_input.empty()) {
-                    std::cin >> user_input;
+                    std::getline(std::cin, user_input);
                     user_input.push_back('\n');
                 }
-                // Read and erase the first character of the string
-                std::cout << user_input[0];
+                // Use user_input as a buffer for incoming chars
+                tape[byte_index] = user_input[0];
                 user_input.erase(0, 1);
                 break;
             case '[':
+                if (program.substr(ii, 3) == "[-]" && optimized) {
+                    tape[byte_index] = 0;
+                    ii += 2;
+                }
                 if (!tape[byte_index]) { // Stop the loop if the current byte is 0
                     ii = loop_map[ii];
                 }

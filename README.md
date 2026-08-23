@@ -7,14 +7,16 @@ brainfk-engine is a command that executes Brainf**k scripts. It has 3 modes, whi
 
 ## Run it
 ### Dependencies
-`git cmake make gcc/clang`
+- `git`
+- `cmake`
+- A C++ compiler (g++, clang++, etc.)
 ### Installation
 ```
 git clone https://github.com/charlesjchai/brainfk-engine
 cd brainfk-engine
-cmake -S . -B build
-cd build
-make
+mkdir build && cd build
+cmake ..
+cmake --build .
 ./brainfkrun
 ```
 ### Executing brainfk-engine
@@ -22,6 +24,6 @@ Usage: `brainfkrun <flags> <mode> file`
 ### Flags
 - `--version` prints the current version.
 - `--help` displays the help screen.
-- `--optimize` optimizes multiple instructions into one. For example, `>>>>>` becomes `index += 5`, and `[-]` is simplified to `arr[index] = 0`.
+- `--optimize` optimizes multiple instructions into one. For example, `>>>>>` becomes `index += 5`, and `[-]` is simplified to `arr[index] = 0` in transpile and compile mode. This flag has the least effect in interpret mode.
 ## License
 This project is licensed under the MIT License.

@@ -25,11 +25,11 @@ FLAGS:
     [--version]
         Shows the current version
 
-    [--optimize]
-        Shrinks multiple instructions into a single one (>>>>> becomes cell_index += 5)
-
     [--help]
         Shows this screen
+
+    [--optimize]
+        Shrinks multiple instructions into a single one (>>>>> becomes cell_index += 5)
 )";
     // TODO: Change `const` to `constexpr` in C++26
     const std::unordered_set<char> BRAINFK_SYMBOLS = {'+', '-', '>', '<', '.', ',', '[', ']'};
@@ -43,7 +43,7 @@ FLAGS:
     Mode mode = static_cast<Mode>(-1); // mode is invalid until declared
     std::string filename;
 
-    for (int i = 0; i < args.size() - 1; i++) {
+    for (int i = 0; i < args.size(); i++) {
         const auto &arg = args[i];
 
         // Add flags to set
@@ -62,6 +62,16 @@ FLAGS:
             continue;
         }
         
+        if (i == args.size() - 1) {
+            filename = args.back();
+            break;
+        }
+
+        if (args.back().starts_with("--")) {
+            std::cerr << "ERROR: the file has to be the last element.\n";
+            return 1;
+        }
+
         // Set target flag
         if (arg == "interpret") {
             mode = Mode::Interpret;
@@ -79,11 +89,10 @@ FLAGS:
         }
     }
 
-    if (args.back().starts_with("--") || mode == static_cast<Mode>(-1)) {
-        std::cerr << "ERROR: a flag cannot be after the mode.\n";
+    if (mode == static_cast<Mode>(-1)) {
+        std::cerr << "ERROR: Mode not set!\n";
         return 1;
     }
-    filename = args.back();
 
     bool optimized = flags.contains(Flag::Optimize);
     std::ifstream program_file(filename);
@@ -105,7 +114,7 @@ FLAGS:
 
     switch (mode) {
         case Mode::Interpret:
-            interpret(program, optimized);
+            interpret(program, flags);
             break;
         case Mode::Transpile:
             // TBA
@@ -114,6 +123,5 @@ FLAGS:
             // TBA
             break;
     }
-
     return 0;
 }

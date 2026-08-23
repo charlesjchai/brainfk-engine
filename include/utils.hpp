@@ -11,6 +11,6 @@ namespace BrainFK {
         Optimize,
     };
 
-    // Input can ONLY contain Brainf**k's 8 symbols (><+-.,[])
-    void interpret(std::string_view, bool);
+    // Input can ONLY contain Brainf**k's 8 symbols (><+-.,[]), throws error if otherwise
+    void interpret(std::string_view, const std::unordered_set<Flag>&);
 }
