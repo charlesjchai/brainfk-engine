@@ -1,18 +1,18 @@
+#include "utils.hpp"
+#include <chrono>
+#include <fstream>
 #include <iostream>
 #include <string>
-#include <vector>
 #include <unordered_set>
-#include <fstream>
-#include <chrono>
-#include "utils.hpp"
+#include <vector>
 
-using std::cin;
 using std::cout;
 using namespace BrainFK;
 
 int main(int argc, char *argv[]) {
     constexpr std::string_view VERSION = "0.1.0";
-    constexpr std::string_view HELP = R"(Usage: brainfkrun [--version] [--optimize] [--help]
+    constexpr std::string_view HELP =
+        R"(Usage: brainfkrun [--version] [--optimize] [--help]
 <mode> file
 
 MODES:
@@ -33,7 +33,8 @@ FLAGS:
         Shrinks multiple instructions into a single one (>>>>> becomes cell_index += 5)
 )";
     // TODO: Change `const` to `constexpr` in C++26
-    const std::unordered_set<char> BRAINFK_SYMBOLS = {'+', '-', '>', '<', '.', ',', '[', ']'};
+    const std::unordered_set<char> BRAINFK_SYMBOLS = {'+', '-', '>', '<',
+                                                      '.', ',', '[', ']'};
 
     if (argc == 1) {
         std::cerr << HELP;
@@ -44,6 +45,7 @@ FLAGS:
     Mode mode = static_cast<Mode>(-1); // mode is invalid until declared
     std::string filename;
 
+    // Parse arguments
     for (int i = 0; i < args.size(); i++) {
         const auto &arg = args[i];
 
@@ -62,7 +64,7 @@ FLAGS:
             }
             continue;
         }
-        
+
         if (i == args.size() - 1) {
             filename = args.back();
             break;
@@ -76,15 +78,11 @@ FLAGS:
         // Set target flag
         if (arg == "interpret") {
             mode = Mode::Interpret;
-        }
-        else if (arg == "transpile") {
+        } else if (arg == "transpile") {
             mode = Mode::Transpile;
-        }
-        else if (arg == "compile") {
+        } else if (arg == "compile") {
             mode = Mode::Compile;
-        }
-        else {
-            //TODO: Read from stdin
+        } else {
             std::cerr << "ERROR: `" << arg << "` is not a valid mode.\n";
             return 1;
         }
@@ -112,19 +110,23 @@ FLAGS:
             program.push_back(ch);
         }
     }
-    uint64_t before = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    uint64_t before = std::chrono::duration_cast<std::chrono::microseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
     switch (mode) {
-        case Mode::Interpret:
-            interpret(program, flags);
-            break;
-        case Mode::Transpile:
-            // TBA
-            break;
-        case Mode::Compile:
-            // TBA
-            break;
+    case Mode::Interpret:
+        interpret(program, flags);
+        break;
+    case Mode::Transpile:
+        transpile(program, flags);
+        break;
+    case Mode::Compile:
+        // TBA
+        break;
     }
-    uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+                       std::chrono::system_clock::now().time_since_epoch())
+                       .count();
     std::cout << "Time elapsed: " << now - before << " µs\n";
     return 0;
 }
