@@ -1,5 +1,6 @@
 #include "utils.hpp"
 #include <chrono>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -42,16 +43,20 @@ FLAGS:
     }
     std::vector<std::string> args(argv + 1, argv + argc);
     std::unordered_set<Flag> flags;
-    Mode mode = static_cast<Mode>(-1); // mode is invalid until declared
+    Mode mode{-1}; // mode is invalid until declared
+    bool areFlagsEnded{};
     std::string filename;
 
     // Parse arguments
-    for (int i = 0; i < args.size(); i++) {
-        const auto &arg = args[i];
+    for (std::size_t i{}; i < args.size(); i++) {
+        const auto &arg{args[i]};
 
         // Add flags to set
-        if (arg.starts_with("--")) {
-            if (arg == "--help") {
+        if (arg.starts_with("--") && !areFlagsEnded) {
+            if (arg == "--") {
+                // End of flags delimiter
+                areFlagsEnded = true;
+            } else if (arg == "--help") {
                 cout << HELP;
                 return 0;
             } else if (arg == "--version") {
@@ -59,32 +64,27 @@ FLAGS:
             } else if (arg == "--optimize") {
                 flags.insert(Flag::Optimize);
             } else {
-                std::cerr << "ERROR: `" << arg << "` is not a valid flag.\n";
+                std::cerr << "ERROR: " << arg << "' is not a valid flag.\n";
                 return 1;
             }
             continue;
         }
 
+        // Set target mode
+        if (mode == static_cast<Mode>(-1)) {
+            if (arg == "interpret") {
+                mode = Mode::Interpret;
+            } else if (arg == "transpile") {
+                mode = Mode::Transpile;
+            } else if (arg == "compile") {
+                mode = Mode::Compile;
+            } else {
+                std::cerr << "ERROR: '" << arg << "' is not a valid mode.\n";
+                return 1;
+            }
+        }
         if (i == args.size() - 1) {
             filename = args.back();
-            break;
-        }
-
-        if (args.back().starts_with("--")) {
-            std::cerr << "ERROR: the file has to be the last element.\n";
-            return 1;
-        }
-
-        // Set target flag
-        if (arg == "interpret") {
-            mode = Mode::Interpret;
-        } else if (arg == "transpile") {
-            mode = Mode::Transpile;
-        } else if (arg == "compile") {
-            mode = Mode::Compile;
-        } else {
-            std::cerr << "ERROR: `" << arg << "` is not a valid mode.\n";
-            return 1;
         }
     }
 
@@ -93,14 +93,14 @@ FLAGS:
         return 1;
     }
 
-    bool optimized = flags.contains(Flag::Optimize);
+    bool optimized{flags.contains(Flag::Optimize)};
     std::ifstream program_file(filename);
     std::string line;
 
     std::string program;
 
     if (!program_file.is_open()) {
-        std::cerr << "Error opening " << filename << " for reading\n";
+        std::cerr << "Error opening '" << filename << "' for reading\n";
         return 1;
     }
     char ch;
@@ -110,9 +110,9 @@ FLAGS:
             program.push_back(ch);
         }
     }
-    uint64_t before = std::chrono::duration_cast<std::chrono::microseconds>(
+    uint64_t before{static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
-                          .count();
+                          .count())};
     switch (mode) {
     case Mode::Interpret:
         interpret(program, flags);
@@ -124,9 +124,9 @@ FLAGS:
         // TBA
         break;
     }
-    uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+    uint64_t now{static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
                        std::chrono::system_clock::now().time_since_epoch())
-                       .count();
+                       .count())};
     std::cout << "Time elapsed: " << now - before << " µs\n";
     return 0;
 }

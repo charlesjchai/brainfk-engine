@@ -1,25 +1,29 @@
 #include "utils.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <memory>
 #include <stack>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 using namespace BrainFK;
 
-static std::unordered_map<size_t, size_t> build_loop_table(std::string_view program) {
-    std::unordered_map<size_t, size_t> loop_map;
-    std::stack<size_t> loop_stack;
+namespace {
+std::unordered_map<std::size_t, std::size_t>
+build_loop_table(std::string_view program) {
+    std::unordered_map<std::size_t, std::size_t> loop_map;
+    std::stack<std::size_t> loop_stack;
 
-    // The value of the index of a '[' is equal to the index of its matching ']'.
-    for (size_t ii = 0; ii < program.length(); ii++) {
-        uint8_t instruction = program[ii];
+    // The value of the index of a '[' is equal to the index of its matching
+    // ']'.
+    for (std::size_t ii{}; ii < program.length(); ii++) {
+        const char &instruction{program[ii]};
         if (instruction == '[') {
             loop_stack.push(ii);
         } else if (instruction == ']') {
-            size_t loop_start_index = loop_stack.top();
+            std::size_t loop_start_index = loop_stack.top();
             loop_stack.pop();
             loop_map[loop_start_index] = ii;
             loop_map[ii] = loop_start_index;
@@ -27,20 +31,96 @@ static std::unordered_map<size_t, size_t> build_loop_table(std::string_view prog
     }
     return loop_map;
 }
-
+std::string brainfk_ast_optimize(std::string_view program) {
+    std::string new_program(program.length(), ' ');
+    // Two variables are needed because new_program can be shorter than program
+    for (std::size_t program_ii{}, new_program_ii{};
+         program_ii < program.length(); program_ii++, new_program_ii++) {
+        const char &instruction{program[program_ii]};
+        switch (instruction) {
+        case '>':
+            [[fallthrough]];
+        case '<': {
+            std::ptrdiff_t movement_sum{};
+            while (true) {
+                // Add up the sum of the movements
+                if (program[program_ii] == '<') {
+                    movement_sum--;
+                } else if (program[program_ii] == '>') {
+                    movement_sum++;
+                } else {
+                    // Decrement to compensate for the for loop's increment
+                    program_ii--;
+                    break;
+                }
+                program_ii++;
+            }
+            // Apply the sum to the string
+            for (; movement_sum > 0; movement_sum--, new_program_ii++) {
+                new_program[new_program_ii] = '>';
+            }
+            for (; movement_sum < 0; movement_sum++, new_program_ii++) {
+                new_program[new_program_ii] = '<';
+            }
+            // Decrement to compensate for the for loop's increment
+            new_program_ii--;
+            break;
+        }
+        case '+':
+            [[fallthrough]];
+        case '-': {
+            std::ptrdiff_t movement_sum{};
+            while (true) {
+                if (program[program_ii] == '-') {
+                    movement_sum--;
+                } else if (program[program_ii] == '+') {
+                    movement_sum++;
+                } else {
+                    program_ii--;
+                    break;
+                }
+                program_ii++;
+            }
+            for (; movement_sum > 0; movement_sum--, new_program_ii++) {
+                new_program[new_program_ii] = '+';
+            }
+            for (; movement_sum < 0; movement_sum++, new_program_ii++) {
+                new_program[new_program_ii] = '-';
+            }
+            new_program_ii--;
+            break;
+        }
+        case '[':
+            if (program.substr(program_ii, 3) == "[-]") {
+                new_program[new_program_ii] = '0';
+                // +2 and not +3 to compensate for the for loop increment
+                program_ii += 2;
+                break;
+            }
+        default:
+            new_program[new_program_ii] = program[program_ii];
+        }
+    }
+    // Trim whitespace
+    new_program.erase(new_program.find_last_not_of(' ') + 1);
+    return new_program;
+}
+} // namespace
 void BrainFK::interpret(std::string_view program,
                         const std::unordered_set<Flag> &options) {
 
     const bool &optimized = options.contains(Flag::Optimize);
 
     std::vector<uint8_t> tape(1024);
-    size_t byte_index = 0;
+    std::size_t byte_index{};
     std::string user_input;
 
-    std::unordered_map<size_t, size_t> loop_map = build_loop_table(program);
+    std::unordered_map<std::size_t, std::size_t> loop_map =
+        build_loop_table(program);
 
-    for (size_t ii = 0; ii < program.length(); ii++) {
-        switch (program[ii]) {
+    for (std::size_t ii{}; ii < program.length(); ii++) {
+        const char &instruction = program[ii];
+        switch (instruction) {
         case '>':
             byte_index++;
             if (byte_index == tape.size()) {
@@ -48,7 +128,7 @@ void BrainFK::interpret(std::string_view program,
             }
             break;
         case '<':
-            if (byte_index == 0) {
+            if (!byte_index) {
                 throw std::out_of_range("Index below 0");
             }
             byte_index--;
@@ -88,17 +168,41 @@ void BrainFK::interpret(std::string_view program,
             }
             break;
         default:
-            std::cerr << "Undefined symbol: " << program[ii] << std::endl;
+            std::cerr << "Undefined symbol: '" << instruction << "'"
+                      << std::endl;
             throw std::runtime_error("Undefined symbol");
             break;
         }
     }
 }
 
-std::string BrainFK::transpile(std::string_view program, const std::unordered_set<Flag> &options) {
-    std::unique_ptr<BrainFK::ASTNode> asTree;
-    std::unordered_map<size_t, size_t> loop_map = build_loop_table(program);
-    
+std::string BrainFK::transpile(std::string_view program,
+                               const std::unordered_set<Flag> &options) {
+    std::unique_ptr<BrainFK::ASTNode> rootNode =
+        std::make_unique<BrainFK::ASTNode>();
+    rootNode->data = BrainFK::AST::Root{};
+    std::unordered_map<std::size_t, std::size_t> loop_map =
+        build_loop_table(program);
+    const bool &optimized = options.contains(Flag::Optimize);
+    std::string parsed_program;
+    if (optimized) {
+        parsed_program = brainfk_ast_optimize(program);
+    } else {
+        parsed_program = program;
+    }
+    std::cout << parsed_program << '\n';
+    /*for (int ii{}; ii < program.length(); ii++) {
+        const char &instruction = program[ii];
+        switch (instruction) {
+        case '>':
+                rootNode->children.push_back(
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Add{1}));
+                break;
+
+
+            break;
+        }
+    }*/
 
     std::string target;
     return target;
