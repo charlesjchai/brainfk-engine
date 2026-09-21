@@ -7,6 +7,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 using namespace BrainFK;
 
@@ -178,11 +179,14 @@ void BrainFK::interpret(std::string_view program,
 
 std::string BrainFK::transpile(std::string_view program,
                                const std::unordered_set<Flag> &options) {
-    std::unique_ptr<BrainFK::ASTNode> rootNode =
-        std::make_unique<BrainFK::ASTNode>();
-    rootNode->data = BrainFK::AST::Root{};
     std::unordered_map<std::size_t, std::size_t> loop_map =
         build_loop_table(program);
+    std::unique_ptr<BrainFK::ASTNode> rootNode =
+        std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Root{});
+
+    std::stack<std::unique_ptr<BrainFK::ASTNode>> nodeStack;
+    nodeStack.push(std::move(rootNode)); // The top of the stack is the current parent node
+
     const bool &optimized = options.contains(Flag::Optimize);
     std::string parsed_program;
     if (optimized) {
@@ -190,19 +194,49 @@ std::string BrainFK::transpile(std::string_view program,
     } else {
         parsed_program = program;
     }
-    std::cout << parsed_program << '\n';
-    /*for (int ii{}; ii < program.length(); ii++) {
+    std::cerr << parsed_program << '\n';
+    for (int ii{}; ii < program.length(); ii++) {
         const char &instruction = program[ii];
-        switch (instruction) {
-        case '>':
-                rootNode->children.push_back(
+        std::cerr << "Encountered instruction '" << instruction << "'\n";
+        if (!optimized) {
+            switch (instruction) {
+            case '<':
+                nodeStack.top()->children.push_back(
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Left{1}));
+                break;
+            case '>':
+                nodeStack.top()->children.push_back(
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Right{1}));
+                break;
+            case '+':
+                nodeStack.top()->children.push_back(
                     std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Add{1}));
                 break;
-
-
-            break;
+            case '-':
+                nodeStack.top()->children.push_back(
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Sub{1}));
+                break;
+            case '[': {
+                auto loop_node =
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Loop{});
+                nodeStack.push(std::move(loop_node));
+                break;
+            }
+            case ']':
+                nodeStack.pop();
+                break;
+            case '.':
+                nodeStack.top()->children.push_back(
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Print{}));
+                break;
+            case ',':
+                nodeStack.top()->children.push_back(
+                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Input{}));
+                break;
+            }
+        } else {
         }
-    }*/
+    }
 
     std::string target;
     return target;
