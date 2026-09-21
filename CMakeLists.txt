@@ -8,9 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(brainfkrun
+add_executable(bfkengine
     src/main.cpp
-    src/utils.cpp
+    src/interpreter.cpp
+    src/transpiler.cpp
 )
 
-target_include_directories(brainfkrun PRIVATE include)
+target_include_directories(bfkengine PRIVATE include)
