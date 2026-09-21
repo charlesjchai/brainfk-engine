@@ -14,6 +14,7 @@ enum class Mode {
 };
 enum class Flag {
     Optimize,
+    Output,
 };
 
 namespace AST {
@@ -42,11 +43,11 @@ struct ASTNode {
                      BrainFK::AST::Left, BrainFK::AST::Right,
                      BrainFK::AST::Zero, BrainFK::AST::Loop,
                      BrainFK::AST::Print, BrainFK::AST::Input>;
-    NodeVariant data;
+    NodeVariant type;
     std::vector<std::unique_ptr<ASTNode>> children;
 
     ASTNode() = default;
-    ASTNode(NodeVariant data) : data{data} {}
+    ASTNode(NodeVariant type) : type{type} {}
 };
 
 // Input can ONLY contain Brainf**k's 8 symbols (><+-.,[]), throws error if

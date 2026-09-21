@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -13,8 +14,8 @@ using namespace BrainFK;
 int main(int argc, char *argv[]) {
     constexpr std::string_view VERSION = "0.1.0";
     constexpr std::string_view HELP =
-        R"(Usage: brainfkrun [--version] [--optimize] [--help]
-<mode> file
+        R"(Usage: brainfkrun [--version] [--optimize] [--output <FILE>] [--help]
+<MODE> FILE
 
 MODES:
 
@@ -32,6 +33,9 @@ FLAGS:
 
     [--optimize]
         Shrinks multiple instructions into a single one (>>>>> becomes cell_index += 5)
+
+    [--output <FILE>]
+        Outputs to a file in transpile and compile mode ONLY
 )";
     // TODO: Change `const` to `constexpr` in C++26
     const std::unordered_set<char> BRAINFK_SYMBOLS = {'+', '-', '>', '<',
@@ -45,6 +49,7 @@ FLAGS:
     std::unordered_set<Flag> flags;
     Mode mode{-1}; // mode is invalid until declared
     bool areFlagsEnded{};
+    std::optional<std::string> output{std::nullopt};
     std::string filename;
 
     // Parse arguments
@@ -63,6 +68,10 @@ FLAGS:
                 cout << "brainfk-engine v" << VERSION << '\n';
             } else if (arg == "--optimize") {
                 flags.insert(Flag::Optimize);
+            } else if (arg == "--output") {
+                output = args[i + 1];
+                flags.insert(Flag::Output);
+                i++;
             } else {
                 std::cerr << "ERROR: " << arg << "' is not a valid flag.\n";
                 return 1;
@@ -87,9 +96,12 @@ FLAGS:
             filename = args.back();
         }
     }
-
     if (mode == static_cast<Mode>(-1)) {
         std::cerr << "ERROR: Mode not set!\n";
+        return 1;
+    }
+    if (flags.contains(Flag::Output) && mode == Mode::Interpret) {
+        std::cerr << "ERROR: Cannot use output flag with interpret\n";
         return 1;
     }
 
