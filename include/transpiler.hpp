@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include "flag.hpp"
 #include <variant>
 #include <vector>
 
@@ -11,10 +12,6 @@ enum class Mode {
     Interpret,
     Transpile,
     Compile,
-};
-enum class Flag {
-    Optimize,
-    Output,
 };
 
 namespace AST {
@@ -49,11 +46,6 @@ struct ASTNode {
     ASTNode() = default;
     ASTNode(NodeVariant type) : type{type} {}
 };
-
-// Input can ONLY contain Brainf**k's 8 symbols (><+-.,[]), throws error if
-// otherwise
-void interpret(std::string_view program,
-               const std::unordered_set<Flag> &options);
 std::string transpile(std::string_view program,
                       const std::unordered_set<Flag> &options);
 } // namespace BrainFK
