@@ -1,9 +1,9 @@
 #pragma once
+#include "flag.hpp"
 #include <cstddef>
 #include <memory>
 #include <string>
 #include <unordered_set>
-#include "flag.hpp"
 #include <variant>
 #include <vector>
 
@@ -45,6 +45,9 @@ struct ASTNode {
 
     ASTNode() = default;
     ASTNode(NodeVariant type) : type{type} {}
+    void add_child(std::unique_ptr<ASTNode> node) {
+        children.push_back(std::move(node));
+    }
 };
 std::string transpile(std::string_view program,
                       const std::unordered_set<Flag> &options);

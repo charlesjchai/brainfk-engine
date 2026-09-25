@@ -1,6 +1,7 @@
 #include "transpiler.hpp"
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #include <stack>
 #include <string>
 #include <string_view>
@@ -8,13 +9,14 @@
 #include <utility>
 #include <vector>
 using namespace BrainFK;
+using std::size_t;
 
 namespace {
 std::string brainfk_ast_optimize(std::string_view program) {
     std::string new_program(program.length(), ' ');
     // Two variables are needed because new_program can be shorter than program
-    for (std::size_t program_ii{}, new_program_ii{};
-         program_ii < program.length(); program_ii++, new_program_ii++) {
+    for (size_t program_ii{}, new_program_ii{}; program_ii < program.length();
+         program_ii++, new_program_ii++) {
         const char &instruction{program[program_ii]};
         switch (instruction) {
         case '>':
@@ -85,17 +87,12 @@ std::string brainfk_ast_optimize(std::string_view program) {
     new_program.erase(new_program.find_last_not_of(' ') + 1);
     return new_program;
 }
-} // namespace
+std::unique_ptr<ASTNode> generate_ast(std::string_view program,
+                                      const std::unordered_set<Flag> &options) {
 
-std::string BrainFK::transpile(std::string_view program,
-                               const std::unordered_set<Flag> &options) {
-
-    std::unique_ptr<BrainFK::ASTNode> rootNode =
-        std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Root{});
-
-    std::stack<std::unique_ptr<BrainFK::ASTNode>> nodeStack;
-    nodeStack.push(
-        std::move(rootNode)); // The top of the stack is the current parent node
+    std::stack<ASTNode *> nodeStack;
+    std::unique_ptr<ASTNode> rootNode = std::make_unique<ASTNode>(AST::Root{});
+    nodeStack.push(rootNode.get());
 
     const bool &optimized = options.contains(Flag::Optimize);
     std::string parsed_program;
@@ -104,51 +101,113 @@ std::string BrainFK::transpile(std::string_view program,
     } else {
         parsed_program = program;
     }
-    
+
     std::cerr << parsed_program << '\n';
-    for (int ii{}; ii < program.length(); ii++) {
+    for (size_t ii{}; ii < program.length(); ii++) {
+        const auto &parent_node = nodeStack.top();
         const char &instruction = program[ii];
-        std::cerr << "Encountered instruction '" << instruction << "'\n";
-        if (!optimized) {
-            switch (instruction) {
-            case '<':
-                nodeStack.top()->children.push_back(
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Left{1}));
-                break;
-            case '>':
-                nodeStack.top()->children.push_back(
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Right{1}));
-                break;
-            case '+':
-                nodeStack.top()->children.push_back(
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Add{1}));
-                break;
-            case '-':
-                nodeStack.top()->children.push_back(
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Sub{1}));
-                break;
-            case '[': {
-                auto loop_node =
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Loop{});
-                nodeStack.push(std::move(loop_node));
-                break;
+        std::cerr << "Encountered instruction " << instruction << '\n';
+        switch (instruction) {
+        case '<':
+            if (!optimized) {
+                parent_node->add_child(std::make_unique<ASTNode>(AST::Left{1}));
+            } else {
+                // Count how many '<' are there
+                size_t instruction_count{};
+                for (size_t i = ii; i < program.length(); i++) {
+                    if (program[i] != instruction) {
+                        instruction_count = i - ii;
+                        break;
+                    }
+                }
+                parent_node->add_child(
+                    std::make_unique<ASTNode>(AST::Left{instruction_count}));
+                // Skip over the other instructions, but compensate for the for
+                // loop
+                ii += instruction_count - 1;
             }
-            case ']':
-                nodeStack.pop();
-                break;
-            case '.':
-                nodeStack.top()->children.push_back(
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Print{}));
-                break;
-            case ',':
-                nodeStack.top()->children.push_back(
-                    std::make_unique<BrainFK::ASTNode>(BrainFK::AST::Input{}));
-                break;
+            break;
+        case '>':
+            if (!optimized) {
+                parent_node->add_child(
+                    std::make_unique<ASTNode>(AST::Right{1}));
+            } else {
+                size_t instruction_count{};
+                for (size_t i = ii; i < program.length(); i++) {
+                    if (program[i] != instruction) {
+                        instruction_count = i - ii;
+                        break;
+                    }
+                }
+                parent_node->add_child(
+                    std::make_unique<ASTNode>(AST::Right{instruction_count}));
+                ii += instruction_count - 1;
             }
-        } else {
+            break;
+        case '+':
+            if (!optimized) {
+                parent_node->add_child(std::make_unique<ASTNode>(AST::Add{1}));
+            } else {
+                size_t instruction_count{};
+                for (size_t i = ii; i < program.length(); i++) {
+                    if (program[i] != instruction) {
+                        instruction_count = i - ii;
+                        break;
+                    }
+                }
+                parent_node->add_child(std::make_unique<ASTNode>(
+                    AST::Add{static_cast<uint8_t>(instruction_count)}));
+                ii += instruction_count - 1;
+            }
+            break;
+        case '-':
+            if (!optimized) {
+                parent_node->add_child(std::make_unique<ASTNode>(AST::Sub{1}));
+            } else {
+                size_t instruction_count{};
+                for (size_t i = ii; i < program.length(); i++) {
+                    if (program[i] != instruction) {
+                        instruction_count = i - ii;
+                        break;
+                    }
+                }
+                parent_node->add_child(std::make_unique<ASTNode>(
+                    AST::Sub{static_cast<uint8_t>(instruction_count)}));
+                ii += instruction_count - 1;
+            }
+            break;
+        case '[': {
+            parent_node->add_child(std::make_unique<ASTNode>(AST::Loop{}));
+            nodeStack.push(parent_node->children.back().get());
+            // Descend into the loop
+            break;
+        }
+        case ']':
+            nodeStack.pop();
+            // We are done with the loop, back up we go
+            break;
+        case '.':
+            parent_node->add_child(std::make_unique<ASTNode>(AST::Print{}));
+            break;
+        case ',':
+            parent_node->add_child(std::make_unique<ASTNode>(AST::Input{}));
+            break;
+        default:
+            std::cerr << "Undefined symbol: '" << instruction << "'"
+                      << std::endl;
+            throw std::runtime_error("Undefined symbol");
         }
     }
+    return std::move(rootNode);
+}
+} // namespace
 
+std::string BrainFK::transpile(std::string_view program,
+                               const std::unordered_set<Flag> &options) {
+    std::unique_ptr<ASTNode> asTree = generate_ast(program, options);
     std::string target;
+
+    
+
     return target;
 }
