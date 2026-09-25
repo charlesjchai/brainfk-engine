@@ -7,23 +7,23 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
 using namespace BrainFK;
+using std::size_t;
 
 namespace {
-std::unordered_map<std::size_t, std::size_t>
+std::unordered_map<size_t, size_t>
 build_loop_table(std::string_view program) {
-    std::unordered_map<std::size_t, std::size_t> loop_map;
-    std::stack<std::size_t> loop_stack;
+    std::unordered_map<size_t, size_t> loop_map;
+    std::stack<size_t> loop_stack;
 
     // The value of the index of a '[' is equal to the index of its matching
     // ']'.
-    for (std::size_t ii{}; ii < program.length(); ii++) {
+    for (size_t ii{}; ii < program.length(); ii++) {
         const char &instruction{program[ii]};
         if (instruction == '[') {
             loop_stack.push(ii);
         } else if (instruction == ']') {
-            std::size_t loop_start_index = loop_stack.top();
+            size_t loop_start_index = loop_stack.top();
             loop_stack.pop();
             loop_map[loop_start_index] = ii;
             loop_map[ii] = loop_start_index;
@@ -37,24 +37,24 @@ void BrainFK::interpret(std::string_view program,
 
     const bool &optimized = options.contains(Flag::Optimize);
 
-    std::vector<uint8_t> tape(1024);
-    std::size_t byte_index{};
+    std::array<uint8_t, 30000> tape;
+    size_t byte_index{};
     std::string user_input;
 
-    std::unordered_map<std::size_t, std::size_t> loop_map =
+    std::unordered_map<size_t, size_t> loop_map =
         build_loop_table(program);
 
-    for (std::size_t ii{}; ii < program.length(); ii++) {
+    for (size_t ii{}; ii < program.length(); ii++) {
         const char &instruction = program[ii];
         switch (instruction) {
         case '>':
             byte_index++;
-            if (byte_index == tape.size()) {
-                tape.resize(tape.size() * 2);
+            if (byte_index > tape.size()) {
+                throw std::out_of_range("Index above 30000");
             }
             break;
         case '<':
-            if (!byte_index) {
+            if (byte_index < 0) {
                 throw std::out_of_range("Index below 0");
             }
             byte_index--;
@@ -97,7 +97,6 @@ void BrainFK::interpret(std::string_view program,
             std::cerr << "Undefined symbol: '" << instruction << "'"
                       << std::endl;
             throw std::runtime_error("Undefined symbol");
-            break;
         }
     }
 }
