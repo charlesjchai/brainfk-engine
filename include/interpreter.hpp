@@ -1,5 +1,4 @@
 #pragma once
-#include <cstddef>
 #include "flag.hpp"
 #include <unordered_set>
 

@@ -1,13 +1,7 @@
 #include "interpreter.hpp"
 #include "transpiler.hpp"
-#include <chrono>
-#include <cstddef>
 #include <fstream>
 #include <iostream>
-#include <optional>
-#include <string>
-#include <unordered_set>
-#include <vector>
 
 using std::cout;
 using namespace BrainFK;
@@ -123,9 +117,10 @@ FLAGS:
             program.push_back(ch);
         }
     }
-    uint64_t before{static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
-                          std::chrono::system_clock::now().time_since_epoch())
-                          .count())};
+    uint64_t before{static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count())};
     switch (mode) {
     case Mode::Interpret:
         interpret(program, flags);
@@ -137,9 +132,10 @@ FLAGS:
         // TBA
         break;
     }
-    uint64_t now{static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
-                       std::chrono::system_clock::now().time_since_epoch())
-                       .count())};
-    std::cout << "Time elapsed: " << now - before << " µs\n";
+    uint64_t now{static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count())};
+    std::cerr << "Time elapsed: " << now - before << " µs\n";
     return 0;
 }
