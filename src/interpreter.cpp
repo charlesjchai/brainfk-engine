@@ -1,18 +1,13 @@
 #include "interpreter.hpp"
-#include <cstddef>
-#include <cstdint>
 #include <iostream>
 #include <stack>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 using namespace BrainFK;
 using std::size_t;
+using std::string;
+using std::string_view;
 
 namespace {
-std::unordered_map<size_t, size_t>
-build_loop_table(std::string_view program) {
+std::unordered_map<size_t, size_t> build_loop_table(string_view program) {
     std::unordered_map<size_t, size_t> loop_map;
     std::stack<size_t> loop_stack;
 
@@ -32,17 +27,16 @@ build_loop_table(std::string_view program) {
     return loop_map;
 }
 } // namespace
-void BrainFK::interpret(std::string_view program,
+void BrainFK::interpret(string_view program,
                         const std::unordered_set<Flag> &options) {
 
     const bool &optimized = options.contains(Flag::Optimize);
 
     std::array<uint8_t, 30000> tape;
     size_t byte_index{};
-    std::string user_input;
+    string user_input;
 
-    std::unordered_map<size_t, size_t> loop_map =
-        build_loop_table(program);
+    std::unordered_map<size_t, size_t> loop_map = build_loop_table(program);
 
     for (size_t ii{}; ii < program.length(); ii++) {
         const char &instruction = program[ii];
